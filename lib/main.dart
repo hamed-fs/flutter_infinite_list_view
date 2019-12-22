@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:progress_indicators/progress_indicators.dart';
+
+const int _PAGE_SIZE = 20;
 
 void main() => runApp(App());
 
@@ -27,25 +28,39 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  final int _pageSize = 10;
+  List<String> _list = [];
+  int _currentMax = _PAGE_SIZE;
 
-  int _currentMax = 10;
-  List<String> _list;
+  GlobalKey<RefreshIndicatorState> _refreshKey;
 
   final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
-    _list = List.generate(_pageSize, (int index) => 'Item: ${index + 1}');
+    _refreshKey = GlobalKey<RefreshIndicatorState>();
 
-    _scrollController.addListener(() {
-      if (_scrollController.position.pixels ==
-          _scrollController.position.maxScrollExtent) {
-        getMoreData();
-      }
-    });
+    _list = List.generate(_PAGE_SIZE, (int index) => 'Item: ${index + 1}');
+
+    _scrollController.addListener(
+      () {
+        if (_scrollController.position.pixels ==
+            _scrollController.position.maxScrollExtent) {
+          getMoreData();
+        }
+      },
+    );
 
     super.initState();
+  }
+
+  Future<void> _getList() async {
+    await Future.delayed(
+      Duration(seconds: 3),
+    );
+
+    _list = List.generate(_PAGE_SIZE, (int index) => 'Item: ${index + 1}');
+
+    setState(() {});
   }
 
   @override
@@ -54,22 +69,27 @@ class _HomePageState extends State<HomePage> {
       appBar: AppBar(
         title: Text(widget.title),
       ),
-      body: ListView.builder(
-        controller: _scrollController,
-        itemCount: _list.length + 1,
-        itemExtent: 80.0,
-        itemBuilder: (BuildContext context, int index) {
-          if (index == _list.length) {
-            return JumpingDotsProgressIndicator(
-              color: Theme.of(context).accentColor,
-              fontSize: 48.0,
-            );
-          }
+      body: RefreshIndicator(
+        key: _refreshKey,
+        child: ListView.builder(
+          controller: _scrollController,
+          itemCount: _list.length + 1,
+          itemBuilder: (BuildContext context, int index) {
+            if (index == _list.length) {
+              return Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: Center(
+                  child: CircularProgressIndicator(),
+                ),
+              );
+            }
 
-          return ListTile(
-            title: Text(_list[index]),
-          );
-        },
+            return ListTile(
+              title: Text(_list[index]),
+            );
+          },
+        ),
+        onRefresh: () async => await _getList(),
       ),
     );
   }
@@ -79,11 +99,11 @@ class _HomePageState extends State<HomePage> {
       Duration(seconds: 3),
     );
 
-    for (int i = _currentMax; i < _currentMax + _pageSize; i++) {
+    for (int i = _currentMax; i < _currentMax + _PAGE_SIZE; i++) {
       _list.add('Item: ${i + 1}');
     }
 
-    _currentMax += _pageSize;
+    _currentMax += _PAGE_SIZE;
 
     setState(() {});
   }
